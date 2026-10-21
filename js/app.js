@@ -40,9 +40,9 @@
   }
   function rawCloseOverlays() { $("#scrim").hidden = true; $("#sheet").hidden = true; $("#drawer").hidden = true; }
   window.addEventListener("popstate", (e) => {
-    navigatingBack = true;
+    navigatingBack = true; const priorScroll=App._detailScroll;
     if (!$("#panel").hidden) closePanel(true);
-    else if (!$("#sheet").hidden || !$("#drawer").hidden) rawCloseOverlays();
+    else if (!$("#sheet").hidden || !$("#drawer").hidden) { const sh=!$("#sheet").hidden;rawCloseOverlays(); if(sh&&Number.isFinite(priorScroll))requestAnimationFrame(()=>window.scrollTo(0,priorScroll)); }
     else if (["find", "goal", "lab", "box"].includes(e.state && e.state.scoreView)) setView(e.state.scoreView, true);
     else setView("find", true);
     navigatingBack = false;
@@ -94,7 +94,7 @@
     $("#menuBtn").addEventListener("click", openDrawer);
     $("#scrim").addEventListener("click", closeOverlays);
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeOverlays(); });
-    $("#drawer").addEventListener("click", (e) => { const b = e.target.closest("[data-panel]"); if (b) { closeOverlays(); openPanel(b.dataset.panel); } });
+    $("#drawer").addEventListener("click", (e) => { const b = e.target.closest("[data-panel]"); if (b) { rawCloseOverlays(); history.replaceState({scoreView:App.view},"",location.pathname+location.search+"#"+App.view); openPanel(b.dataset.panel); } });
     $("#rememberChk").addEventListener("change", (e) => { Store.setRemember(e.target.checked); toast(e.target.checked ? "이 기기에 입력값을 기억합니다. 공용 PC에서는 끄세요." : "기억하지 않습니다. 저장된 값을 지웠습니다."); renderView(); });
     $("#wipeBtn").addEventListener("click", () => {
       const b = $("#wipeBtn");
@@ -202,7 +202,7 @@
   });
   document.addEventListener("change", (e) => {
     const t = e.target;
-    if (t.matches("select[data-choice]")) { const c=Store.choices(); c[t.dataset.choice]=t.value; if(t.dataset.choice==="t1Subject" || t.dataset.choice==="t2Subject") { c.t1Type=tamTypeOf(c.t1Subject);c.t2Type=tamTypeOf(c.t2Subject); const e=document.getElementById("tamDuplicateMsg"); if(e)e.remove(); if(c.t1Subject && c.t1Subject===c.t2Subject){t.insertAdjacentHTML("afterend",'<span id="tamDuplicateMsg" class="notice">동일한 탐구 과목을 두 번 선택할 수 없습니다.</span>'); c[t.dataset.choice]=""; t.value="";} } Store.save(); }
+    if (t.matches("select[data-choice]")) { const c=Store.choices(); c[t.dataset.choice]=t.value; if(t.dataset.choice==="t1Subject" || t.dataset.choice==="t2Subject") { c.t1Type=tamTypeOf(c.t1Subject);c.t2Type=tamTypeOf(c.t2Subject); const e=document.getElementById("tamDuplicateMsg"); if(e)e.remove(); if(c.t1Subject && c.t1Subject===c.t2Subject){t.insertAdjacentHTML("afterend",'<span id="tamDuplicateMsg" class="notice">동일한 탐구 과목을 두 번 선택할 수 없습니다.</span>'); c[t.dataset.choice]=""; t.value=""; c.t1Type=tamTypeOf(c.t1Subject); c.t2Type=tamTypeOf(c.t2Subject);} } Store.save(); }
   });
   let resTimer = null;
   function debouncedResults() { clearTimeout(resTimer); resTimer = setTimeout(() => { renderProfile(); renderResults(); renderSummary(); }, 300); }
@@ -272,7 +272,7 @@
     ui.addEventListener("input", () => {
       const q = ui.value.trim();
       if (!q) { list.hidden = true; return; }
-      const hits = D.univs.filter((u) => u.includes(q) && !h.univs.includes(u)).slice(0, 12);
+      const aliases = {"경상대":"경상국립대","서울과기대":"서울과학기술대","고대":"고려대","연대":"연세대"}; const needle=aliases[q]||q; const hits = D.univs.filter((u) => u.includes(needle) && !h.univs.includes(u)).slice(0, 12);
       list.innerHTML = hits.length ? hits.map((u) => `<button type="button" data-act="hope-univ" data-v="${esc(u)}">${esc(u)} <span class="muted">${D.rows.filter((r) => r.univ === u).length}개 모집단위</span></button>`).join("") : `<div class="muted" style="padding:10px">'${esc(q)}' 대학이 이 지원참고표에 없습니다.</div>`;
       list.hidden = false;
     });
@@ -472,7 +472,7 @@
       ${St().grade === 3 ? `<div class="row" style="align-items:center"><button class="chip" type="button" data-act="stage-one" aria-pressed="${!!f.showStage1}">1단계 모집도 보기 ${f.showStage1 ? "✓" : ""}</button><span class="muted">기본은 2단계·일괄 모집 중심</span></div>` : ""}
       <div><span class="lbl">모집군</span><div class="chips">${["가", "나", "다"].map((g) => `<button class="chip" type="button" data-act="filter-group" data-v="${g}" aria-pressed="${f.groups.includes(g)}">${g}군</button>`).join("")}</div></div>
       <div><span class="lbl">계열</span><div class="chips">${D.fields.map((g) => `<button class="chip" type="button" data-act="filter-field" data-v="${g}" aria-pressed="${f.fields.includes(g)}">${g}</button>`).join("")}</div></div>
-      <div><span class="lbl">빠른 전형 선택</span><button class="chip" type="button" data-act="region-talent" aria-pressed="${f.adm === "지역인재"}">지역인재 전형</button></div>
+      
       <div><span class="lbl">권역 빠른 선택</span><div class="chips">${Object.keys(REGION_GROUPS).map(k=>`<button class="chip" type="button" data-act="region-group" data-v="${k}">${k}</button>`).join("")}</div></div>
       <div><span class="lbl">지역</span><div class="chips">${D.regions.map((g) => `<button class="chip" type="button" data-act="filter-region" data-v="${g}" aria-pressed="${f.regions.includes(g)}">${g}</button>`).join("")}</div></div>
       <div class="field"><label for="fAdm">전형명에 들어간 말</label><input id="fAdm" type="search" value="${esc(f.adm)}" placeholder="예: 지역인재, 일반"></div>
@@ -521,7 +521,7 @@
       case "same-univ": closeOverlays(); setView("find"); quickHope({ univs: [b.dataset.v] }); break;
       case "same-unit": closeOverlays(); setView("find"); quickHope({ depts: [b.dataset.v] }); break;
       case "restore-hope": St().hope = App._quickHope; App._quickHope = null; St().tab = "hope"; renderHopePanel(); renderResults(); Store.save(); break;
-      case "share-summary": { const list = App.getResults(); const rows = (St().tab === "hope" ? list.hope : list.near).slice(0, 5); const summary = [`대학까지 몇 점? · 고${St().grade} · ${St().mode === "official" ? "공식 성적표" : "가채점"}`, `비교 척도: ${App.scale ? Calc.SCALE_NAME[App.scale] : "계산 불가"}`, ...rows.map(x => `${x.row.univ} ${x.row.unit}: ${isNum(x.c.diff) ? sgn(x.c.diff) + "점" : "추가 입력 필요"}`), "참고자료이며 합격 가능성 예측이 아닙니다."]; navigator.clipboard.writeText(summary.join("\n")).then(() => toast("개인 식별정보를 제외한 결과 요약을 복사했습니다.")).catch(() => toast("복사를 지원하지 않는 환경입니다.")); break; }
+      case "share-summary": { const list = App.getResults(); const rows = (St().tab === "hope" ? list.hope : list.near).slice(0, 5); const summary = [`대학까지 몇 점? · 고${St().grade} · ${St().mode === "official" ? "공식 성적표" : "가채점"}`, `비교 척도: ${App.scale ? Calc.SCALE_NAME[App.scale] : "계산 불가"}`, ...rows.map(x => `${x.row.univ} ${x.row.unit}: ${isNum(x.cmp.diff) ? sgn(x.cmp.diff) + "점" : "추가 입력 필요"}`), "참고자료이며 합격 가능성 예측이 아닙니다."]; navigator.clipboard.writeText(summary.join("\n")).then(() => toast("개인 식별정보를 제외한 결과 요약을 복사했습니다.")).catch(() => toast("복사를 지원하지 않는 환경입니다.")); break; }
       case "load-search": loadSearch(Number(v)); break;
       case "del-search": St().savedSearches.splice(Number(v), 1); Store.save(); renderView(); break;
       default: if (App.viewAction) App.viewAction(act, b, e);
@@ -559,10 +559,11 @@
 
   /* ---------- 상세 패널 ---------- */
   function openDetail(id) {
+    App._detailScroll = window.scrollY;
     const r = App.D.byId.get(id); if (!r) return;
     const P = App.prof, c = Calc.compareRow(r, P, App.scale, cfg), x = r.x;
     const scales = ["std", "pct", "raw"].filter((s) => isNum(r.ref[s]));
-    const refRows = scales.map((s) => { const mine = P.totals[s]; const d = isNum(mine) ? Calc.r2(mine - r.ref[s]) : null; const tone = Calc.tone(d, s, cfg); return `<tr><td>${Calc.SCALE_SHORT[s]}${s === App.scale ? " <b>(기준)</b>" : ""}</td><td>${fmt(r.ref[s])}</td><td>${fmt(mine)}</td><td>${isNum(d) ? `<b class="diff ${tone}" style="font-size:15px">${sgn(d)}</b>` : `<span class="muted">추가 입력 필요</span>`}</td></tr>`; }).join("");
+    const refRows = scales.map((s) => { const scored = Calc.compareRow(r,P,s,{...cfg,compareMode:St().grade===3?"auto":"common"}); const mine = scored.scale === s && scored.status === "exact" ? scored.mine : P.totals[s]; const d = scored.scale === s && scored.status === "exact" ? scored.diff : (St().grade===3 ? null : (isNum(mine) ? Calc.r2(mine-r.ref[s]) : null)); const tone = Calc.tone(d, s, cfg); return `<tr><td>${Calc.SCALE_SHORT[s]}${s === App.scale ? " <b>(기준)</b>" : ""}</td><td>${fmt(scored.scale === s && scored.status === "exact" ? scored.ref : r.ref[s])}</td><td>${fmt(mine)}</td><td>${isNum(d) ? `<b class="diff ${tone}" style="font-size:15px">${sgn(d)}</b>` : `<span class="muted">추가 입력 필요</span>`}</td></tr>`; }).join("");
     const formula = App.scale ? formulaText(App.scale) : "";
     let sec3 = "";
     if (x) {
@@ -603,7 +604,7 @@
         <dt>모집단위</dt><dd>${esc(r.unit)}</dd><dt>계열</dt><dd>${esc(r.field)} · ${esc(r.subfield)}</dd>
         <dt>전형 · 모집군</dt><dd>${esc(r.adm)} · ${esc(r.group)}군</dd><dt>모집인원</dt><dd>${r.quota ?? "자료 없음"}명</dd>
         ${x ? `<dt>전년도 경쟁률</dt><dd>${isNum(x.compet) ? x.compet + " : 1" : "자료 없음"}</dd>` : ""}</dl></div>
-      <div class="sec"><h3>지원참고점수와 내 점수 (국수탐 2과목)</h3>
+      <div class="sec"><h3>지원참고점수와 내 점수 (고3: 모집단위별 산출 기준)</h3>${St().grade === 3 ? `<p class="muted">주 비교: ${esc(c.basis)} · ${esc(Calc.SCALE_NAME[c.scale]||"확인 필요")} / 척도별 다른 행의 결과는 공통 국수탐 비교와 섞지 않습니다.</p>` : ""}
         <div class="scroll-x"><table class="mini-table"><thead><tr><th>척도</th><th>참고점수</th><th>내 점수</th><th>차이</th></tr></thead><tbody>${refRows}</tbody></table></div>
         ${formula ? `<details class="fold"><summary>계산식 자세히 보기</summary><div class="fold-in"><p style="margin:0;font-size:13.5px">${formula}</p><p class="muted" style="margin:0">점수 차이 = 내 점수 − 대학 지원참고점수. 근접은 차이가 ±${cfg.nearRule[App.scale]}점 미만일 때입니다. 합격 확률이 아닙니다.</p></div></details>` : ""}
         ${c.status === "need" ? `<div class="notice">${needText(r)}</div>` : ""}</div>
@@ -627,7 +628,7 @@
     return `${Calc.SCALE_NAME[s]} 합 = 국어 ${S.kor[s]} + 수학 ${S.math[s]} + ${nm[ta]} ${S[ta][s]} + ${nm[tb]} ${S[tb][s]} = <b>${fmt(P.totals[s])}</b>`;
   }
   function openDrawer() { $("#scrim").hidden = false; $("#drawer").hidden = false; $("#drawer button").focus(); markOverlay("drawer"); }
-  function closeOverlays() { const wasOpen = !$("#sheet").hidden || !$("#drawer").hidden; rawCloseOverlays(); if (wasOpen && history.state && history.state.scoreOverlay && !navigatingBack) history.back(); }
+  function closeOverlays() { const wasOpen = !$("#sheet").hidden || !$("#drawer").hidden; const wasSheet = !$("#sheet").hidden; rawCloseOverlays(); if(wasSheet && Number.isFinite(App._detailScroll)) requestAnimationFrame(()=>window.scrollTo(0,App._detailScroll)); if (wasOpen && history.state && history.state.scoreOverlay && !navigatingBack) history.replaceState({scoreView:App.view},"",location.pathname+location.search+"#"+App.view); }
   function openPanel(name) {
     const p = $("#panel"); p.hidden = false; document.body.style.overflow = "hidden"; markOverlay("panel");
     const head = (t) => `<div class="panel-head"><button class="icon-btn" type="button" data-act="close-panel" aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg></button><h2>${t}</h2></div>`;
@@ -640,7 +641,7 @@
     p.innerHTML = `<div class="panel-in">${html}</div>`; p.scrollTop = 0;
   }
   App.openPanel = openPanel;
-  function closePanel(fromBack) { const wasOpen = !$("#panel").hidden; $("#panel").hidden = true; document.body.style.overflow = ""; if (wasOpen && !fromBack && history.state && history.state.scoreOverlay === "panel" && !navigatingBack) history.back(); }
+  function closePanel(fromBack) { const wasOpen = !$("#panel").hidden; $("#panel").hidden = true; document.body.style.overflow = ""; if (wasOpen && !fromBack && history.state && history.state.scoreOverlay === "panel" && !navigatingBack) history.replaceState({scoreView:App.view},"",location.pathname+location.search+"#"+App.view); }
   App.closePanel = closePanel;
 
   /* ---------- 화면 전환 ---------- */
@@ -648,7 +649,7 @@
     App.view = v;
     $$(".bottomnav button").forEach((b) => { if (b.dataset.view === v) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
     ["find", "goal", "lab", "box"].forEach((k) => ($("#view-" + k).hidden = k !== v));
-    if (!fromHash && location.hash !== "#" + v) history.pushState({ scoreView: v }, "", "#" + v);
+    if (!fromHash && location.hash !== "#" + v) history.replaceState({ scoreView: v }, "", "#" + v);
     renderView(); window.scrollTo({ top: 0 });
   }
   App.setView = setView;
@@ -680,10 +681,10 @@
     return `<div class="card prose"><p>원본 엑셀 5개 파일의 시트·열·수식·숨김 시트·매크로를 검사했습니다. 원본 값은 고치지 않았고, 의심되는 항목을 아래에 기록했습니다. (검사일 ${esc(V.generated || "")})</p>
       <ul><li>고1·고2: '원표백등' 시트와 '한문제더' 숨김 시트의 변환표가 행 단위로 일치함 (각 99행 × 4과목)</li><li>고1·고2: '대학지원가능점수' 4,214행과 '한문제더' 숨김 '지원참고표' 4,214행이 일치함</li><li>고3: 4,281행 (고1·고2에 없는 단계별 모집 1단계 67행 포함), 모집단위 ID 중복 없음</li><li>같은 대학·군·모집단위라도 전형·캠퍼스·단계가 다르면 따로 표시함 (197개 조합)</li><li>합산 방식: 원점수·표준점수는 국+수+탐1+탐2, 백분위는 국+수+(탐1+탐2)÷2 — '한문제더' 수식과 같음</li></ul></div>
       <div class="card scroll-x"><table class="mini-table"><thead><tr><th>학년</th><th>위치</th><th>원본값</th><th>유형</th><th>처리</th></tr></thead><tbody>${V.issues.map((i) => `<tr><td>고${i.grade}</td><td>${esc(i.where)}</td><td style="max-width:260px;overflow-wrap:anywhere;font-size:12px">${esc(i.value)}</td><td>${esc(i.type)}</td><td>${esc(i.status)}</td></tr>`).join("")}</tbody></table></div>
-      <div class="card prose"><h3>계산하지 않는 것</h3><ul><li>고3 원점수 → 표준점수·백분위 변환 (고3 파일에 변환표 없음)</li><li>등급만으로 표준점수·백분위 추정</li><li>대학별 환산점수 총점 (대학별 변환표준점수·환산식 원자료 없음)</li><li>'中 택N', '탐(1)'처럼 선택·가중이 들어간 반영영역 점수</li><li>전국 석차(몇 등) — 원자료 없음</li><li>공식 성적표 모드의 전국 상위누적 — 공식 분포 자료 등록 전</li></ul></div>`;
+      <div class="card prose"><h3>계산하지 않는 것</h3><ul><li>고3 원점수 → 표준점수·백분위 변환 (고3 파일에 변환표 없음)</li><li>등급만으로 표준점수·백분위 추정</li><li>대학별 환산점수 총점 (대학별 변환표준점수·환산식 원자료 없음)</li><li>검증되지 않은 대학별 최종 환산점수 및 미수록 산출기준</li><li>전국 석차(몇 등) — 원자료 없음</li><li>공식 성적표 모드의 전국 상위누적 — 공식 분포 자료 등록 전</li></ul></div>`;
   }
   function privacyHtml() {
-    return `<div class="card prose"><ul><li>입력한 성적은 <b>서버로 보내지 않습니다.</b> 모든 계산은 지금 쓰는 브라우저 안에서만 합니다.</li><li>기본 설정에서는 화면을 닫으면 입력값이 사라집니다. 메뉴의 '이 기기에 입력값 기억하기'를 켠 경우에만 이 기기 브라우저에 저장됩니다.</li><li>공용 PC를 썼다면 메뉴 ▸ <b>모든 입력값 지우기</b>를 누르세요.</li><li>주소(URL)나 공유 링크에는 성적을 넣지 않습니다.</li><li>상담보고서는 기본이 익명이며, 이름은 원할 때만 적고 파일 이름에는 넣지 않습니다.</li><li>교사용 도구는 화면을 숨겨 둔 것일 뿐 비밀번호 보호가 아닙니다(GitHub Pages는 서버 인증을 지원하지 않음). 학생 성적 CSV는 학교의 개인정보 처리 기준에 맞게 다루고, 학생 이름 대신 익명 코드를 쓰세요.</li></ul></div>`;
+    return `<div class="card prose"><ul><li>입력한 성적은 <b>서버로 보내지 않습니다.</b> 모든 계산은 지금 쓰는 브라우저 안에서만 합니다.</li><li>성적과 상담 메모는 '이 기기에 입력값 기억하기'를 켠 경우에만 저장됩니다. 관심 대학의 ID는 편의를 위해 자동 보관되지만 이름과 상담 메모는 동의 없이 저장하지 않습니다.</li><li>공용 PC를 썼다면 메뉴 ▸ <b>모든 입력값 지우기</b>를 누르세요.</li><li>주소(URL)나 공유 링크에는 성적을 넣지 않습니다.</li><li>상담보고서는 기본이 익명이며, 이름은 원할 때만 적고 파일 이름에는 넣지 않습니다.</li><li>교사용 도구는 화면을 숨겨 둔 것일 뿐 비밀번호 보호가 아닙니다(GitHub Pages는 서버 인증을 지원하지 않음). 학생 성적 CSV는 학교의 개인정보 처리 기준에 맞게 다루고, 학생 이름 대신 익명 코드를 쓰세요.</li></ul></div>`;
   }
 
   App.h = { fmt, sgn, esc, cardHtml, starBtn, statusPill, diffHtml, ctx, gkey, favs, isFav, subs, rowLabel, DISCLAIMER, STATUS_TEXT, officialOn, coreName, renderInputs, renderTop, showInputCard };

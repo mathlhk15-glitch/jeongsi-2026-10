@@ -117,7 +117,7 @@
       if (ctx.mode === "gachae" && isNum(inp.raw)) {
         cell.raw = Number(inp.raw); cell.src.raw = "input"; out.anyInput = true;
         const lim = C.limits(s, "raw");
-        if (cell.raw < lim.min || cell.raw > lim.max) out.errors.push(`${s.n} 원점수는 ${lim.min}~${lim.max} 사이로 입력하세요.`);
+        if (cell.raw < lim.min || cell.raw > lim.max || (g === 3 && !Number.isInteger(cell.raw))) out.errors.push(`${s.n} 원점수는 ${lim.min}~${lim.max} 사이로 입력하세요.`);
         if (g < 3 && D && D.conv) {
           const row = C.lookupRaw(D.conv[s.k], cell.raw);
           if (row) {
@@ -259,7 +259,7 @@
     const v = (key) => S[key] && isNum(S[key][scale]) ? Number(S[key][scale]) : null;
     const inquiry = (n) => {
       const t = [v("t1"), v("t2")].filter(isNum).sort((a,b)=>b-a);
-      if (n===1) return t.length ? t[0]*2 : null;
+      if (n===1) return t.length ? t[0]*(scale === "std" ? 2 : 1) : null;
       if (t.length<2) return null;
       return scale==="pct" ? (t[0]+t[1])/2 : t[0]+t[1];
     };
@@ -307,10 +307,14 @@
     const x = row.x;
     // 고3은 먼저 해당 모집단위의 산출기준 및 산출척도에 맞게 비교한다.
     // 가채점 원점수/표준점수/백분위와 최종 대학 환산점수는 별개임.
+    if (prof.grade === 3 && cfg && cfg.compareMode === "common") {
+      if (scale && isNum(prof.totals[scale]) && isNum(row.ref[scale])) {res.mine=prof.totals[scale];res.ref=row.ref[scale];res.diff=r2(res.mine-res.ref);res.scale=scale;res.status="exact";res.tone=C.tone(res.diff,scale,cfg);res.basis="공통 국수탐(2)";}
+      return res;
+    }
     if (prof.grade === 3 && x && C.areaComputable(x.areaRule)) {
       const use = String(x.useScore || "");
       const prefer = use.includes("백분위") ? "pct" : use.includes("표준") ? "std" : null;
-      const candidates = (cfg && cfg.compareMode === "common") ? [scale] :
+      const candidates = (cfg && cfg.compareMode === "common") ? [] :
         (cfg && cfg.compareMode === "std") ? ["std"] :
         (cfg && cfg.compareMode === "pct") ? ["pct"] :
         [...new Set([prefer,scale,"std","pct","raw"].filter(Boolean))];

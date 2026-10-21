@@ -54,7 +54,7 @@
     try { St.remember = localStorage.getItem(CONSENT) === "1"; } catch (e) { St.remember = false; }
     try {
       const f = JSON.parse(localStorage.getItem(BOOKMARKS) || "null");
-      if (f && typeof f === "object") St.state.favorites = merge(St.state.favorites, f);
+      if (f && typeof f === "object") {const safe={};for(const g of ["g1","g2","g3"])safe[g]=(Array.isArray(f[g])?f[g]:[]).map(x=>({id:x.id,memo:St.remember?x.memo||"":""}));St.state.favorites=merge(St.state.favorites,safe);}
     } catch(e) {}
     if (!St.remember) return;
     try {
@@ -65,7 +65,7 @@
   };
   let timer = null;
   St.save = function () {
-    try { localStorage.setItem(BOOKMARKS, JSON.stringify(St.state.favorites)); } catch(e) {}
+    try { localStorage.setItem(BOOKMARKS, JSON.stringify(Object.fromEntries(["g1","g2","g3"].map(g=>[g,(St.state.favorites[g]||[]).map(x=>St.remember?x:{id:x.id})])))); } catch(e) {}
     if (!St.remember) return;
     clearTimeout(timer);
     timer = setTimeout(() => {

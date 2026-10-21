@@ -102,7 +102,7 @@
   };
 
   /* 희망 조건 일치 여부. 반환: null(불일치) 또는 {kind:'name'|'related', why:[...]} */
-  const UNIV_ALIASES={"경상대":"경상국립대","서울과기대":"서울과학기술대","고대":"고려대","연대":"연세대","부산교대":"부산교육대"};
+  const UNIV_ALIASES={"경상대":"경상국립대","서울과기대":"서울과학기술대","고대":"고려대","연대":"연세대"};
   S.matchHope = function (row, hope) {
     const conds = [];
     const why = [];
@@ -115,7 +115,7 @@
       const name = (row.unit || "").toLowerCase();
       let ok = hope.depts.some((d) => name.includes(d.toLowerCase()));
       if (!ok && hope.related) {
-        const rel = hope.depts.flatMap((d) => S.related(d)).filter(w => w.length > 2);
+        const rel = hope.depts.flatMap((d) => S.related(d)).filter(w => w.length > 1);
         if (rel.some((w) => name.includes(w.toLowerCase()) || (row.subfield || "").toLowerCase().includes(w.toLowerCase()))) { ok = true; kind = "related"; }
       }
       conds.push(ok); if (ok) why.push(kind === "related" ? "관련 분야" : "학과명");
@@ -174,7 +174,8 @@
     for (const row of D.rows) {
       if (!S.passFilter(row, filter)) continue;
       const cmp = global.Calc.compareRow(row, prof, scale, cfg);
-      if (cmp.status === "exact" && Math.abs(cmp.diff) <= range + 1e-9) out.push({ row, cmp });
+      const common = D.grade === 3 ? global.Calc.compareRow(row, prof, scale, {...cfg,compareMode:"common"}) : cmp;
+      if (common.status === "exact" && Math.abs(common.diff) <= range + 1e-9) out.push({ row, cmp });
     }
     return out;
   };

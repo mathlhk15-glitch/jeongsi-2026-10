@@ -6,8 +6,8 @@
 window.UDATA = window.UDATA || {};
 window.UDATA.config = {
   appName: "대학까지 몇 점?",
-  appVersion: "1.2.0",
-  ruleVersion: "1.2.0",
+  appVersion: "1.2.1",
+  ruleVersion: "1.2.1",
   updatedAt: "2026-10-22",
   schoolName: "",                      // 보고서 머리글에 표시할 학교명(비워 두면 표시 안 함)
   datasets: {

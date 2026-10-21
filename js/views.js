@@ -27,7 +27,7 @@
     const ratio = (r) => r.x ? ["kor", "math", "eng", "tam", "his"].filter((k) => isNum(r.x.w[k]) && r.x.w[k] > 0).map((k) => ({ kor: "국", math: "수", eng: "영", tam: "탐", his: "한" }[k] + r.x.w[k])).join(" ") || "자료 없음" : "자료 없음(고1·고2 참고표)";
     const fields = [
       ["모집군", (r) => r.group + "군"], ["전형", (r) => r.adm], ["계열", (r) => r.field + " · " + r.subfield], ["모집인원", (r) => (r.quota ?? "–") + "명"],
-      ["참고점수", (r) => (s ? h.fmt(r.ref[s]) : "–")], ["점수 차이", (r, c) => (c.status === "exact" ? `<b class="diff ${c.tone}" style="font-size:16px">${h.sgn(c.diff)}</b>` : "추가 입력 필요")],
+      ["참고점수", (r, c) => (c && c.status === "exact" ? h.fmt(c.ref) : s ? h.fmt(r.ref[s]) : "–")], ["점수 차이", (r, c) => (c.status === "exact" ? `<b class="diff ${c.tone}" style="font-size:16px">${h.sgn(c.diff)}</b>` : "추가 입력 필요")],
       ["반영 비율", (r) => ratio(r)], ["영어", (r) => (r.x ? r.x.engRule || "–" : "–")], ["최저기준", (r) => (r.x && r.x.minimum) || "없음/자료 없음"]
     ];
     const cards = items.map(({ r, c }) => `<div class="card" style="box-shadow:none"><h3>${h.esc(h.rowLabel(r))}</h3><p class="sub" style="margin:2px 0 8px">${h.esc(r.unit)}</p><dl class="kv">${fields.map(([k, fn]) => `<dt>${k}</dt><dd>${fn(r, c)}</dd>`).join("")}</dl></div>`).join("");
@@ -84,8 +84,10 @@
   function reverseBlock(tr) {
     const h = H(), P = App.prof, s = App.scale, ctx = h.ctx(), g = St().grade;
     if (!s) return `<div class="notice">목표까지의 거리를 계산하려면 ${(Calc.neededInputs(P) || { list: [] }).list.join(", ")} 성적이 더 필요합니다.</div>`;
-    const target = tr.ref[s];
-    if (!isNum(target)) return "";
+    const targetCmp = Calc.compareRow(tr,P,s,cfg);
+    const target = targetCmp.status === "exact" ? targetCmp.ref : null;
+    if (!isNum(target)) return `<p class="notice">이 모집단위의 목표 점수 역산에 필요한 성적이 부족합니다.</p>`;
+    if (g === 3 && targetCmp.basis !== "공통 국수탐(2)") return `<div class="notice">${h.esc(targetCmp.basis)} 기준 현재 점수 ${h.fmt(targetCmp.mine)} · 참고점수 ${h.fmt(target)} · 차이 ${h.sgn(targetCmp.diff)}점. 고3의 선택 영역 점수는 단순 총점 증가로 역산할 수 없어 과목별 목표값을 임의로 만들지 않습니다.</div>`;
     const gap = Calc.r2(target - P.totals[s]);
     let rows = "";
     let note = "";
@@ -119,7 +121,7 @@
     if (!s) return `<p class="muted" style="margin:0">국수탐 합을 계산할 수 있어야 추천할 수 있습니다. 서로 다른 대학의 환산점수 총점은 비교하지 않습니다.</p>`;
     const useHope = Search.hasHope(St().hope) && App._top5Hope !== false;
     let pool = D.rows.filter((r) => (useHope ? Search.matchHope(r, St().hope) : true)).map((r) => ({ row: r, cmp: Calc.compareRow(r, P, s, cfg) })).filter((x) => x.cmp.status === "exact");
-    const reached = pool.filter((x) => x.cmp.diff >= 0).sort((a, b) => b.row.ref[s] - a.row.ref[s] || a.cmp.diff - b.cmp.diff).slice(0, 5);
+    const reached = pool.filter((x) => x.cmp.diff >= 0).sort((a, b) => (b.cmp.scale===a.cmp.scale ? b.cmp.ref-a.cmp.ref : a.cmp.scale.localeCompare(b.cmp.scale)) || a.cmp.diff - b.cmp.diff).slice(0, 5);
     let html = `${Search.hasHope(St().hope) ? `<div class="seg" role="group"><button type="button" data-act="top5-hope" data-v="1" aria-pressed="${useHope}">희망 조건 안에서</button><button type="button" data-act="top5-hope" data-v="0" aria-pressed="${!useHope}">전체에서</button></div>` : ""}
       <h3>① 기준점수에 도달한 곳 중 기준점수가 높은 순</h3>
       <p class="muted" style="margin:0">같은 척도(${Calc.SCALE_SHORT[s]})의 지원참고점수 차이만 비교했습니다.</p>
@@ -193,7 +195,8 @@
       <p class="muted" style="margin:0">문항별 배점 자료가 없어 실제 문항과 연결하지 않고 원점수를 올려 봅니다. ${g < 3 ? "변환표에 없는 점수(나올 수 없는 점수)가 되면 표시됩니다. ± 버튼은 변환표에 있는 바로 위·아래 점수로 움직입니다." : ""}</p>` : `<p class="muted" style="margin:0">${mname}를 1점씩 바꿉니다. 다른 지표(백분위·등급)는 서로 임의로 변환하지 않습니다.</p>`;
 
     const scales = ["std", "pct", "raw"].filter((k) => isNum(P.totals[k]) || isNum(NP.totals[k]));
-    const reachB = s ? Sim.countReached(D, P.totals[s], s) : null, reachA = s ? Sim.countReached(D, NP.totals[s], s) : null;
+    const commonReached = p => s && Calc.isNum(p.totals[s]) ? D.rows.filter(r=>{const c=Calc.compareRow(r,p,s,{...cfg,compareMode:"common"});return c.status==="exact"&&c.diff>=0;}).length : null;
+    const reachB=commonReached(P),reachA=commonReached(NP);
     const tid = St().target[h.gkey()], tr = tid ? D.byId.get(tid) : null;
     const totTable = `<div class="scroll-x"><table class="mini-table"><thead><tr><th>척도</th><th>지금</th><th>실험</th><th>변화</th>${P.cum.std ? "<th>상위누적 지금→실험</th>" : ""}</tr></thead><tbody>${scales.map((k) => {
       const cb = P.cum[k] && P.cum[k].kms, ca = NP.cum[k] && NP.cum[k].kms;
@@ -213,8 +216,8 @@
         ${stepRows}${quick}
         <div class="row"><button class="btn small" type="button" data-act="lab-reset">처음 점수로</button><button class="btn small" type="button" data-act="lab-save">시나리오 저장 (${sc.length}/3)</button><button class="btn small primary" type="button" data-act="lab-apply">이 점수로 대학 다시 찾기</button></div></div>
       <div class="card stack"><h2>성적 변화</h2>${totTable}
-        ${s ? `<p class="sub" style="margin:0">기준점수에 도달한 모집단위(${Calc.SCALE_SHORT[s]}): <b>${reachB ?? "–"}개 → ${reachA ?? "–"}개</b>${isNum(reachA) && isNum(reachB) && reachA !== reachB ? ` (${reachA > reachB ? "+" : ""}${reachA - reachB})` : ""}</p>` : ""}
-        ${tr && s && isNum(tr.ref[s]) ? `<div class="notice">목표 <b>${h.esc(tr.univ)} ${h.esc(tr.unit)}</b>(${h.fmt(tr.ref[s])}): 지금 ${gapText(Calc.r2(P.totals[s] - tr.ref[s]))} → 실험 ${gapText(Calc.r2(NP.totals[s] - tr.ref[s]))}</div>` : ""}
+        ${s ? `<p class="sub" style="margin:0">공통 기준점수에 도달한 모집단위(${Calc.SCALE_SHORT[s]}): <b>${reachB ?? "–"}개 → ${reachA ?? "–"}개</b>${isNum(reachA) && isNum(reachB) && reachA !== reachB ? ` (${reachA > reachB ? "+" : ""}${reachA - reachB})` : ""}</p>` : ""}
+        ${tr && s ? (()=>{const before=Calc.compareRow(tr,P,s,cfg),after=Calc.compareRow(tr,NP,s,cfg);return before.status==="exact"&&after.status==="exact"&&before.scale===after.scale?`<div class="notice">목표 <b>${h.esc(tr.univ)} ${h.esc(tr.unit)}</b> (${h.esc(before.basis)}, ${h.fmt(before.ref)}): 지금 ${gapText(before.diff)} → 실험 ${gapText(after.diff)}</div>`:`<div class="notice">선택한 모집단위의 목표 점수 비교에 추가 성적이 필요합니다.</div>`;})() : ""}
         ${NP.errors.length ? `<div class="notice err">${NP.errors.map(h.esc).join("<br>")}</div>` : ""}</div>
       ${between}
       ${scenarioBlock(sc)}
@@ -233,8 +236,8 @@
       ${line("변화", (p, x) => (x ? Object.entries(x.deltas).filter(([, d]) => d).map(([k, d]) => `${h.subs().find((sb) => sb.k === k).n} ${d > 0 ? "+" : ""}${d}`).join(", ") || "변화 없음" : "–"))}
       ${["std", "pct", "raw"].map((k) => line(Calc.SCALE_SHORT[k], (p) => h.fmt(p.totals[k]))).join("")}
       ${App.prof.cum.std ? line("국수탐 상위누적", (p) => (p.cum.std && p.cum.std.kms && isNum(p.cum.std.kms.p) ? p.cum.std.kms.p + "%" : "–")) : ""}
-      ${s ? line("도달 모집단위 수", (p) => (isNum(p.totals[s]) ? Sim.countReached(D, p.totals[s], s) + "개" : "–")) : ""}
-      ${tr && s ? line("목표까지", (p) => (isNum(p.totals[s]) ? gapText(Calc.r2(p.totals[s] - tr.ref[s])) : "–")) : ""}
+      ${s ? line("공통 척도 도달 수", (p) => (isNum(p.totals[s]) ? D.rows.filter(r=>{const c=Calc.compareRow(r,p,s,{...cfg,compareMode:"common"});return c.status==="exact"&&c.diff>=0;}).length+"개" : "–")) : ""}
+      ${tr && s ? line("목표까지", (p) => {const c=Calc.compareRow(tr,p,s,cfg);return c.status==="exact"?gapText(c.diff):"추가 성적 필요";}) : ""}
     </tbody></table></div></div>`;
   }
   /* 가채점 예상 vs 공식 성적표 */
@@ -325,7 +328,7 @@
     if (!totals.length) totals.push(["국수탐 합", "계산 불가(성적 일부만 입력)", ""]);
     const picks = (o.favIds || []).map((id) => D.byId.get(id)).filter(Boolean).slice(0, 8).map((r) => {
       const c = Calc.compareRow(r, P, s, cfg);
-      return { group: r.group, univ: r.univ + (r.campus ? "(" + r.campus + ")" : ""), adm: r.adm, unit: r.unit, ref: s ? r.ref[s] : null, mine: c.mine, diff: c.diff, status: c.status === "exact" ? Calc.TONE_TEXT[c.tone] : "추가 입력 필요" };
+      return { group: r.group, univ: r.univ + (r.campus ? "(" + r.campus + ")" : ""), adm: r.adm, unit: r.unit, ref: c.status === "exact" ? c.ref : null, mine: c.mine, diff: c.diff, status: c.status === "exact" ? Calc.TONE_TEXT[c.tone] : "추가 입력 필요" };
     });
     let targets = [], targetName = "";
     const tr = o.targetId && D.byId.get(o.targetId);

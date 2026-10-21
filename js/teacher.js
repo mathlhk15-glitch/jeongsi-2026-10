@@ -93,8 +93,8 @@
       let near = 0, reached = null, best = [];
       if (scale) {
         const items = [];
-        for (const row of D.rows) { const c = Calc.compareRow(row, prof, scale, cfg); if (c.status === "exact") { if (Math.abs(c.diff) <= range) { near++; items.push({ row, c }); } } }
-        reached = global.Sim.countReached(D, prof.totals[scale], scale);
+        for (const row of D.rows) { const c = Calc.compareRow(row, prof, scale, {...cfg,choices:{}}); if (c.status === "exact") { if (Math.abs(c.diff) <= range) { near++; items.push({ row, c }); } } }
+        reached = D.rows.filter(row=>{const c=Calc.compareRow(row,prof,scale,{...cfg,choices:{},compareMode:"common"});return c.status==="exact"&&c.diff>=0;}).length;
         best = items.sort((a, b) => Math.abs(a.c.diff) - Math.abs(b.c.diff) || a.row.univ.localeCompare(b.row.univ, "ko")).slice(0, 3).map((x) => `${x.row.univ} ${x.row.unit}`);
       }
       out.push({ code, inputs, prof, scale, near, reached, best });
@@ -189,8 +189,8 @@
       list.forEach((d, j) => {
         const s = T.students[idx[j]];
         if (!s.scale) return;
-        const items = D.rows.map((row) => ({ row, c: Calc.compareRow(row, s.prof, s.scale, cfg) })).filter((x) => x.c.status === "exact" && Math.abs(x.c.diff) <= Store.state.range).sort((a, b) => Math.abs(a.c.diff) - Math.abs(b.c.diff)).slice(0, 10);
-        d.picks = items.map((x) => ({ group: x.row.group, univ: x.row.univ, adm: x.row.adm, unit: x.row.unit, ref: x.row.ref[s.scale], mine: x.c.mine, diff: x.c.diff, status: Calc.TONE_TEXT[x.c.tone] }));
+        const items = D.rows.map((row) => ({ row, c: Calc.compareRow(row, s.prof, s.scale, {...cfg,choices:{}}) })).filter((x) => x.c.status === "exact" && Math.abs(x.c.diff) <= Store.state.range).sort((a, b) => Math.abs(a.c.diff) - Math.abs(b.c.diff)).slice(0, 10);
+        d.picks = items.map((x) => ({ group: x.row.group, univ: x.row.univ, adm: x.row.adm, unit: x.row.unit, ref: x.c.ref, mine: x.c.mine, diff: x.c.diff, status: Calc.TONE_TEXT[x.c.tone] }));
         d.scaleLabel = Calc.SCALE_SHORT[s.scale] + ` · 내 점수와 가까운 10개`;
       });
       Report.print(list);
