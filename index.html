@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>대학까지 몇 점?</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="2026년 10월 전국연합학력평가 성적으로 대학 지원참고점수와의 차이를 확인하는 진학상담 도구">
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-in">
+    <button class="brand" id="brandBtn" type="button" aria-label="처음 화면으로">대학까지 몇 점?<small>10월 학평</small></button>
+    <span class="ctx" id="ctxChip">불러오는 중…</span>
+    <button class="icon-btn" id="menuBtn" type="button" aria-label="메뉴 열기" aria-haspopup="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <!-- ================= 1. 대학 찾기 ================= -->
+    <section class="view" id="view-find" aria-label="대학 찾기">
+      <div class="notice" id="yearBanner"></div>
+
+      <div class="card stack" id="inputCard">
+        <div class="stack">
+          <div>
+            <span class="lbl">학년</span>
+            <div class="seg" id="gradeSeg" role="group" aria-label="학년">
+              <button type="button" data-g="1">고1</button><button type="button" data-g="2">고2</button><button type="button" data-g="3">고3</button>
+            </div>
+          </div>
+          <div>
+            <span class="lbl">성적 종류</span>
+            <div class="seg" id="modeSeg" role="group" aria-label="성적 종류">
+              <button type="button" data-m="gachae">가채점 원점수<small>지금 사용</small></button>
+              <button type="button" data-m="official">공식 성적표<small id="officialSmall">준비 중</small></button>
+            </div>
+          </div>
+        </div>
+        <div id="modeNote" class="notice" hidden></div>
+        <p class="muted" style="margin:0">성적은 외부 분석 서버로 전송하지 않습니다. 기기에 성적 저장을 선택한 경우에만 브라우저에 저장되며, 공용 기기에서는 저장하지 마세요.</p>
+        <div id="scoreInputs" class="score-grid"></div>
+        <div id="g3Choices" hidden></div>
+        <details class="fold" id="extraFold">
+          <summary>영어·한국사 (선택)</summary>
+          <div class="fold-in" id="extraInputs"></div>
+        </details>
+        <div>
+          <span class="lbl">점수 차이 범위</span>
+          <div class="seg" id="rangeSeg" role="group" aria-label="점수 차이 범위"></div>
+        </div>
+        <details class="fold" id="hopeFold">
+          <summary>희망 대학·학과 추가하기 <span class="pill blue" id="hopeCount" hidden></span></summary>
+          <div class="fold-in" id="hopePanel"></div>
+        </details>
+        <div id="inputMsgs" class="stack"></div>
+        <div class="row">
+          <button class="btn primary" type="button" id="goBtn" style="flex:2">대학 찾기</button>
+          <button class="btn" type="button" id="resetInputsBtn" style="flex:1">입력 초기화</button>
+        </div>
+      </div>
+
+      <div class="card summary-bar" id="inputSummary" hidden>
+        <div class="scores" id="summaryText"></div>
+        <button class="btn small" type="button" id="editBtn">점수 수정</button>
+      </div>
+
+      <div class="card stack" id="profileCard" hidden></div>
+      <div class="card stack" id="resultCard" hidden></div>
+    </section>
+
+    <!-- ================= 2. 목표 분석 ================= -->
+    <section class="view" id="view-goal" aria-label="목표 분석" hidden></section>
+    <!-- ================= 3. 점수 실험 ================= -->
+    <section class="view" id="view-lab" aria-label="점수 실험" hidden></section>
+    <!-- ================= 4. 내 보관함 ================= -->
+    <section class="view" id="view-box" aria-label="내 보관함" hidden></section>
+
+    <p class="disclaimer" id="footDisclaimer"></p>
+  </div>
+</main>
+
+<nav class="bottomnav" aria-label="주 메뉴">
+  <div class="bottomnav-in">
+    <button type="button" data-view="find" aria-current="page">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>대학 찾기</button>
+    <button type="button" data-view="goal">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></svg>목표 분석</button>
+    <button type="button" data-view="lab">
+      <svg viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5.5 9.5A1.6 1.6 0 0 0 5.9 21h12.2a1.6 1.6 0 0 0 1.4-2.5L14 9V3"/><path d="M7.5 15h9"/></svg>점수 실험</button>
+    <button type="button" data-view="box">
+      <svg viewBox="0 0 24 24"><path d="M4 8h16v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M3 4h18v4H3zM10 12h4"/></svg>내 보관함</button>
+  </div>
+</nav>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-label="모집단위 상세"></aside>
+<aside class="drawer" id="drawer" hidden role="dialog" aria-label="메뉴">
+  <button class="item" type="button" data-panel="teacher">교사용 도구</button>
+  <button class="item" type="button" data-panel="source">자료 출처 및 업데이트</button>
+  <button class="item" type="button" data-panel="howto">사용 방법</button>
+  <button class="item" type="button" data-panel="validation">데이터 검증 정보</button>
+  <button class="item" type="button" data-panel="privacy">개인정보 안내</button>
+  <hr>
+  <label class="item" style="display:flex;gap:10px;align-items:center;min-height:48px;padding:0 8px;font-weight:600"><input type="checkbox" id="rememberChk" style="width:22px;height:22px;min-height:0"> 이 기기에 입력값 기억하기</label>
+  <button class="item" type="button" id="wipeBtn" style="color:var(--down)">모든 입력값 지우기</button>
+</aside>
+<div class="panel" id="panel" hidden role="dialog" aria-modal="true"></div>
+<div id="printArea" aria-hidden="true"></div>
+
+<script src="data/metadata.js"></script>
+<script src="data/validation.js"></script>
+<script src="js/calculator.js"></script>
+<script src="js/search.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/simulator.js"></script>
+<script src="js/report.js"></script>
+<script src="js/app.js"></script>
+<script src="js/views.js"></script>
+<script src="js/teacher.js"></script>
+</body>
+</html>
